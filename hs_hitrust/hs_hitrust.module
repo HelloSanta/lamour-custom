@@ -1,0 +1,182 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: cobenash
+ * Date: 15/11/19
+ * Time: 下午2:07
+ */
+
+/**
+ *此模組主要是給Commerce的payment使用
+ *金流串接為玉山銀行
+ */
+
+function hs_hitrust_menu(){
+  $items = array();
+  $items['checkout/%/confirm'] = array(
+    'title' => t('傳送中'),
+    'page callback' => 'hitrust_confirm_page',
+    'type' => MENU_NORMAL_ITEM,
+    'access callback'=>TRUE,
+  );
+  $items['checkout/%/return'] = array(
+    'title' => t('結果回傳'),
+    'page callback' => 'esun_return_page',
+    'type' => MENU_NORMAL_ITEM,
+    'access callback'=>TRUE,
+  );
+  return $items;
+}
+
+function hs_hitrust_commerce_order_presave($order) {
+  $order->field_order_serial['und'][0]['value']=date("Ymdhis");
+}
+
+
+function hs_hitrust_commerce_payment_method_info() {
+  $payment_methods = array();
+
+  $payment_methods['hitrust_credit_card'] = array(
+    'base'  => 'hitrust_credit_card',
+    'title' => t('信用卡'),
+    'description' => t('HiTrust信用卡服務'),
+    'active' => False,
+  );
+
+
+  return $payment_methods;
+}
+
+/**
+ * Returns the default settings for the So-Net Payment.
+ */
+function hs_hitrust_default_settings() {
+
+}
+
+/*
+* Sonet Payment Environment Setting Form
+*
+*/
+
+function hitrust_credit_card_settings_form($settings = NULL)
+{
+
+}
+
+/**
+ * Payment method callback: submit form.
+ */
+function hitrust_credit_card_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+
+
+}
+
+
+function hitrust_credit_card_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge){
+  global $base_url;
+
+  $method_id=$payment_method['method_id'];
+
+  //取得傳送參數
+  $data=hitrust_environment_argument($method_id,$order,$charge);
+
+  $full_url = url($base_url.'/checkout/'.$order->order_id.'/confirm', array('query' => $data));
+
+  drupal_goto($full_url);
+}
+
+/*
+variable in HiTrust
+*/
+function hs_hitrust_variable_group_info() {
+  $groups['hitrust_all'] = array(
+    'title' => t('HiTrust全域設定'),
+    'description' => t('HiTrust全域設定'),
+  );
+
+  return $groups;
+}
+
+function hs_hitrust_variable_info() {
+
+  $variables['storeid'] = array(
+    'name' => 'storeid',
+    'title' => t('商家代碼'),
+    'description' => t('HiTrust代碼，由HITRUST提供'),
+    'default' => '61795',
+    'type' => 'string',
+    'group' => 'hitrust_all',
+    'token' => TRUE,
+    'element' => array(
+      '#type' => 'textfield',
+    ),
+  );
+
+  $variables['hitrust_url'] = array(
+    'name'   => 'hitrust_url',
+    'title' => t('HiTrust 傳值網址'),
+    'description' => t(''),
+    'default' => 'https://testtrustlink.hitrust.com.tw/TrustLink/TrxReqForJava',
+    'type' => 'string',
+    'group' => 'hitrust_all',
+    'token' => TRUE,
+    'element' => array(
+      '#type' => 'textfield',
+    ),
+  );
+
+  return $variables;
+}
+
+function hitrust_confirm_page(){
+
+
+  $actionUrl=variable_get('hitrust_url');
+
+  //將此值Post到HiTrust對應的頁面，進行後續的動作
+  $output='<form action="'.$actionUrl.'" method="post" name="frm">';
+  foreach ($_GET as $a => $b) {
+    $output=$output."<input type='hidden' name='".htmlentities($a)."' value='".htmlentities($b)."'>";
+  }
+  $output=$output.'</form><script language="JavaScript">document.frm.submit()</script>請稍待。。。';
+
+  return $output;
+}
+
+
+function hitrust_environment_argument($method_id,$order,$charge){
+
+  global $base_url;
+
+
+  /** Payment Method Arguements **/
+  $storeid=variable_get('storeid');
+  $ordernumber=$order->field_order_serial['und'][0]['value'];
+  $amount=$charge['amount'];
+  $currency='TWD';
+  $orderdesc='Order Information Custom Message';
+  $depositflag=1; //1:自動請款 0:一般交易
+  $queryflag=0;
+  $returnUrl=$base_url.'/checkout/'.$order->order_id.'/return';
+  $merUpdateUrl=$base_url.'/checkout/'.$order->order_id.'/result';
+
+  $data=array(
+    'storeid'      => $storeid,
+    'ordernumber'  => $ordernumber,
+    'amount'       => $amount,
+    'currency'     => $currency,
+    'orderdesc'    => $orderdesc,
+    'depositflag'  => $depositflag,
+    '$queryflag'   => $queryflag,
+    'returnUrl'    => $returnUrl,
+    'merUpdateUrl' => $merUpdateUrl,
+  );
+
+
+
+  return $data;
+}
+
+?>
+

@@ -1,0 +1,14 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: cobenash
+ * Date: 15/11/19
+ * Time: 下午2:07
+ */
+
+
+function hs_hitrust_install()
+{
+
+}
+?>

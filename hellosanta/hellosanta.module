@@ -1,0 +1,18 @@
+<?php
+
+//將/node這個頁面讓他變成not-found
+function hellosanta_menu_alter(&$items) {
+    $items['node']['page callback'] = 'drupal_not_found';
+}
+//加入購物車
+  function hellosanta_form_commerce_cart_add_to_cart_form_alter(&$form, &$form_state, $form_id){ 
+    if($form['#attributes']['class'][0]= 'commerce-add-to-cart'){
+       // dpm($form);
+    $form['submit']['#value']='加入購物車';
+  }
+    
+}
+
+
+
+?>
