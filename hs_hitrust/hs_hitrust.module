@@ -25,6 +25,12 @@ function hs_hitrust_menu(){
     'type' => MENU_NORMAL_ITEM,
     'access callback'=>TRUE,
   );
+  $items['checkout/%/merupdate'] = array(
+    'title' => t('Update'),
+    'page callback' => 'hitrust_merupdate',
+    'type' => MENU_NORMAL_ITEM,
+    'access callback'=>TRUE,
+  );
   return $items;
 }
 
@@ -202,14 +208,14 @@ function hitrust_return_page(){
 
 
 
-    //建立commerce交易紀錄
-    $transaction = commerce_payment_transaction_new('hitrust_credit_card', $order_id);
-    $transaction->amount = $order->commerce_order_total['und'][0]['amount'];
-    $transaction->currency_code = $order->commerce_order_total['und'][0]['currency_code'];
-    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-    $transaction->message='交易成功，詳細的金流資料，請至HiTrust後台';
-    commerce_payment_transaction_save($transaction);
-    $transaction_id=$transaction->transaction_id;
+//    //建立commerce交易紀錄
+//    $transaction = commerce_payment_transaction_new('hitrust_credit_card', $order_id);
+//    $transaction->amount = $order->commerce_order_total['und'][0]['amount'];
+//    $transaction->currency_code = $order->commerce_order_total['und'][0]['currency_code'];
+//    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+//    $transaction->message='交易成功，詳細的金流資料，請至HiTrust後台';
+//    commerce_payment_transaction_save($transaction);
+//    $transaction_id=$transaction->transaction_id;
 
 
     $order = commerce_order_status_update($order, 'checkout_complete');
@@ -219,6 +225,40 @@ function hitrust_return_page(){
 
 
   return 'Result Page';
+}
+
+function hitrust_merupdate(){
+
+  $retcode=isset($_POST['retcode'])? $_POST['retcode']:NULL;
+  $ordernumber=isset($_POST['ordernumber'])?$_POST['ordernumber']:NULL;
+  $merid=isset($_POST['merid'])?$_POST['merid']:NULL;
+
+  if(empty($retcode)){
+    drupal_exit();
+  }
+  elseif($retcode=='00'){ //代表完成付款
+    $query=db_select('commerce_order','o');
+    $query->condition('o.type','commerce_order');
+    $query->join('field_data_field_order_serial','a','a.entity_id=o.order_id');
+    $query->fields('o',array('order_id'));
+    $query->condition('a.field_order_serial_value',$ordernumber);
+    $order_id=$query->execute()->fetchfield();
+
+    $order=commerce_order_load($order_id);
+
+    //建立commerce交易紀錄
+    $transaction = commerce_payment_transaction_new('hitrust_credit_card', $order_id);
+    $transaction->amount = $order->commerce_order_total['und'][0]['amount'];
+    $transaction->currency_code = $order->commerce_order_total['und'][0]['currency_code'];
+    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+    $transaction->message=print_r($_POST);
+    commerce_payment_transaction_save($transaction);
+    $transaction_id=$transaction->transaction_id;
+
+    echo 'R01=00';
+    drupal_exit();
+
+  }
 }
 
 ?>
