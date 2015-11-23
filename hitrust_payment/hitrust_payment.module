@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the HiTrust Payment feature.
+ */
+
+include_once 'hitrust_payment.features.inc';
