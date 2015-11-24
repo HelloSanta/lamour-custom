@@ -35,7 +35,7 @@ function hs_hitrust_menu(){
 }
 
 function hs_hitrust_commerce_order_presave($order) {
-  $order->field_order_serial['und'][0]['value']=date("Ymdhis");
+  //$order->field_order_serial['und'][0]['value']=date("Ymdhis");
 }
 
 
@@ -158,6 +158,8 @@ function hitrust_environment_argument($method_id,$order,$charge){
 
   /** Payment Method Arguements **/
   $storeid=variable_get('storeid');
+  $order->field_order_serial['und'][0]['value']=date("Ymdhis");
+  commerce_order_save($order);
   $ordernumber=$order->field_order_serial['und'][0]['value'];
   $amount=$charge['amount']*10;
   $currency='TWD';
@@ -165,7 +167,7 @@ function hitrust_environment_argument($method_id,$order,$charge){
   $depositflag=1; //1:自動請款 0:一般交易
   $queryflag=1;
   $returnUrl=$base_url.'/checkout/'.$order->order_id.'/return';
-  $merUpdateUrl=$base_url.'/checkout/'.$order->order_id.'/result';
+  $merUpdateUrl=$base_url.'/checkout/'.$order->order_id.'/merupdate';
   $data=array(
     'Type'         => 'Auth',
     'storeid'      => $storeid,
@@ -222,7 +224,10 @@ function hitrust_return_page(){
     commerce_checkout_complete($order);
     drupal_goto('/checkout/'.$order_id);
   }
-
+  else{
+    echo '錯誤代碼：'.$retcode;
+    watchdog('HiTrust',$retcode,WATCHDOG_NOTICE);
+  }
 
   return 'Result Page';
 }
@@ -251,9 +256,25 @@ function hitrust_merupdate(){
     $transaction->amount = $order->commerce_order_total['und'][0]['amount'];
     $transaction->currency_code = $order->commerce_order_total['und'][0]['currency_code'];
     $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-    $transaction->message=print_r($_POST);
+    $transaction->message='成功,詳細資訊請上HiTrust';
     commerce_payment_transaction_save($transaction);
     $transaction_id=$transaction->transaction_id;
+
+    //建立訂單紀錄
+    $payment_record = new stdClass;
+    $payment_record->type = 'deposit_record';
+    $payment_record->title = $ordernumber;
+    $payment_record->field_ordernumber[LANGUAGE_NONE][0]['value']=$_POST['ordernumber'];
+    $payment_record->field_retcode[LANGUAGE_NONE][0]['value']=$_POST['retcode'];
+    $payment_record->field_currency[LANGUAGE_NONE][0]['value']=$_POST['currency'];
+    $payment_record->field_orderdate[LANGUAGE_NONE][0]['value']=$_POST['orderdate'];
+    $payment_record->field_orderstatus[LANGUAGE_NONE][0]['value']=$_POST['orderstatus'];
+    $payment_record->field_approveamount[LANGUAGE_NONE][0]['value']=$_POST['approveamount'];
+    $payment_record->field_authcode[LANGUAGE_NONE][0]['value']=$_POST['authCode'];
+    $payment_record->field_authrrn[LANGUAGE_NONE][0]['value']=$_POST['authRRN'];
+    $payment_record->field_transaction_id[LANGUAGE_NONE][0]['target_id']=$transaction_id;
+    node_object_prepare($payment_record);
+    node_save($payment_record);
 
     echo 'R01=00';
     drupal_exit();
